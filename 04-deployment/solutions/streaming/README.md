@@ -21,7 +21,8 @@ KINESIS_STREAM_INPUT=ride_events
 aws kinesis put-record \
     --stream-name ${KINESIS_STREAM_INPUT} \
     --partition-key 1 \
-    --data "Hello, this is a test."
+    --data "Hello, this is a test." \
+    --cli-binary-format raw-in-base64-out
 ```
 
 Decoding base64
@@ -56,7 +57,8 @@ aws kinesis put-record \
             "trip_distance": 3.66
         }, 
         "ride_id": 156
-    }'
+    }' \
+    --cli-binary-format raw-in-base64-out
 ```
 
 ### Test event
@@ -122,9 +124,6 @@ docker build -t stream-model-duration:v1 .
 
 docker run -it --rm \
     -p 8080:8080 \
-    -e PREDICTIONS_STREAM_NAME="ride_predictions" \
-    -e RUN_ID="e1efc53e9bd149078b0c12aeaa6365df" \
-    -e TEST_RUN="True" \
     -e AWS_DEFAULT_REGION="eu-west-1" \
     stream-model-duration:v1
 ```
@@ -173,18 +172,24 @@ aws ecr create-repository --repository-name duration-model
 
 Logging in
 
+CLI_V1
 ```bash
 $(aws ecr get-login --no-include-email)
+```
+
+CLI_V2
+```bash
+aws ecr get-login-password | docker login --username AWS --password-stdin 200484451860.dkr.ecr.eu-west-1.amazonaws.com/duration-model
 ```
 
 Pushing 
 
 ```bash
-REMOTE_URI="387546586013.dkr.ecr.eu-west-1.amazonaws.com/duration-model"
-REMOTE_TAG="v1"
+REMOTE_URI="200484451860.dkr.ecr.eu-west-1.amazonaws.com/duration-model"
+REMOTE_TAG="v2"
 REMOTE_IMAGE=${REMOTE_URI}:${REMOTE_TAG}
 
-LOCAL_IMAGE="stream-model-duration:v1"
+LOCAL_IMAGE="stream-model-duration:v2"
 docker tag ${LOCAL_IMAGE} ${REMOTE_IMAGE}
 docker push ${REMOTE_IMAGE}
 ```
