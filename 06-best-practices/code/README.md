@@ -132,6 +132,15 @@ docker run -it --rm \
     stream-model-duration:v5
 ```
 
+
+docker run -it --rm \
+    -p 8080:8080 \
+    -e PREDICTIONS_STREAM_NAME="ride_predictions" \
+    -e TEST_RUN="True" \
+    -e AWS_DEFAULT_REGION="eu-west-1" \
+    -v /home/codespace/.aws:/root/.aws \
+    stream-model-duration:v5
+
 URL for testing:
 
 * http://localhost:8080/2015-03-31/functions/function/invocations

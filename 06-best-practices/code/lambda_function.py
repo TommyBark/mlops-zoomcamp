@@ -2,9 +2,11 @@ import os
 
 import model
 
-PREDICTIONS_STREAM_NAME = os.getenv('PREDICTIONS_STREAM_NAME', 'ride_predictions')
-RUN_ID = os.getenv('RUN_ID', "8ecb10409b7f4f33bc986937704f53da")
-TEST_RUN = os.getenv('TEST_RUN', 'False') == 'True'
+PREDICTIONS_STREAM_NAME = os.getenv("PREDICTIONS_STREAM_NAME", "ride_predictions")
+RUN_ID = os.getenv("RUN_ID", "8ecb10409b7f4f33bc986937704f53da")
+TEST_RUN = os.getenv("TEST_RUN", "False") == "True"
+
+print(PREDICTIONS_STREAM_NAME)
 
 model_service = model.init(PREDICTIONS_STREAM_NAME, RUN_ID, TEST_RUN)
 

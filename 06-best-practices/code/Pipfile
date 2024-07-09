@@ -11,6 +11,7 @@ xgboost = "*"
 
 [dev-packages]
 pytest = "*"
+deepdiff = "*"
 
 [requires]
 python_version = "3.9"

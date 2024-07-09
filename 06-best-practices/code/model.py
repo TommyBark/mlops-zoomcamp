@@ -8,26 +8,47 @@ import boto3
 import mlflow
 
 
+def get_model_location(run_id: str):
+
+    model_location = os.getenv("MODEL_LOCATION")
+
+    if model_location is not None:
+        return model_location, None, None
+
+    model_bucket = os.getenv("MODEL_BUCKET", "mlflow-artifact-store-2")
+    experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID", "5")
+
+    model_location = f"s3://{model_bucket}/{experiment_id}/{run_id}/artifacts"
+    return model_location, model_bucket, experiment_id
+
+
 def load_model(run_id: str):
-    logged_model = f"s3://mlflow-artifact-store-2/5/{run_id}/artifacts/models_mlflow"
+    model_path, _, _ = get_model_location(run_id)
+    model_path += "/models_mlflow"
+    print(model_path)
     # logged_model = f'runs:/{RUN_ID}/model'
-    model = mlflow.pyfunc.load_model(logged_model)
+    model = mlflow.pyfunc.load_model(model_path)
     return model
 
 
-def load_preprocessor():
-    s3 = boto3.client("s3")
+def load_preprocessor(run_id: str):
 
-    bucket_name = "mlflow-artifact-store-2"
-    object_key = (
-        "5/8ecb10409b7f4f33bc986937704f53da/artifacts/preprocessor/preprocessor.b"
-    )
-    # Get the object
-    response = s3.get_object(Bucket=bucket_name, Key=object_key)
-    file_content = response["Body"].read()
-    binary_stream = io.BytesIO(file_content)
+    model_path, model_bucket, experiment_id = get_model_location(run_id)
+    model_path += "/preprocessor/preprocessor.b"
+    if model_bucket is not None:
+        s3 = boto3.client("s3")
 
-    dv = pickle.load(binary_stream)
+        object_key = f"{experiment_id}/{run_id}/artifacts/preprocessor/preprocessor.b"
+        # Get the object
+
+        response = s3.get_object(Bucket=model_bucket, Key=object_key)
+        file_content = response["Body"].read()
+        binary_stream = io.BytesIO(file_content)
+
+        dv = pickle.load(binary_stream)
+    else:
+        with open(model_path, "rb") as f:
+            dv = pickle.load(f)
     return dv
 
 
@@ -101,16 +122,27 @@ class KinesisCallback:
         )
 
 
+def create_kinesis_client():
+    endpoint_url = os.getenv("KINESIS_ENDPOINT_URL")
+    if endpoint_url is None:
+        return boto3.client("kinesis")
+
+    return boto3.client("kinesis", endpoint_url=endpoint_url)
+
+
 def init(prediction_stream_name: str, run_id: str, test_run: bool):
 
     model = load_model(run_id)
-    preprocessor = load_preprocessor()
+    preprocessor = load_preprocessor(run_id)
+    # preprocessor = None
 
     callbacks = []
     if not test_run:
-        kinesis_client = boto3.client("kinesis")
+        kinesis_client = create_kinesis_client()
         kinesis_callback = KinesisCallback(kinesis_client, prediction_stream_name)
         callbacks.append(kinesis_callback.put_record)
 
-    model_service = ModelService(model, preprocessor)
+    model_service = ModelService(
+        model, preprocessor, model_version=run_id, callbacks=callbacks
+    )
     return model_service
